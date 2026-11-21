@@ -62,7 +62,10 @@ fun Route.dashboardRoutes() {
         // Рейтинг инспекторов: закрытых проверок и среднее отклонение от плана.
         get("/inspectors-stats") {
             call.respond(transaction {
-                val rows = (VisitsTable innerJoin UsersTable)
+                // Явное условие джойна: у visits ДВА внешних ключа на users (admin_id и inspector_id),
+                // Exposed не может выбрать сам — падает с IllegalStateException.
+                val rows = VisitsTable
+                    .join(UsersTable, JoinType.INNER, onColumn = VisitsTable.inspectorId, otherColumn = UsersTable.id)
                     .selectAll().where { VisitsTable.status eq VisitStatus.COMPLETED }
                     .map { row ->
                         val scheduled = row[VisitsTable.scheduledAt].toInstant()
