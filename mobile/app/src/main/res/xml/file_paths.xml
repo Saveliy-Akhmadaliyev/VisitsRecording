@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Сжатые фото, ожидающие отправки в S3. -->
+    <files-path name="pending_photos" path="pending_photos/" />
+    <!-- Временные файлы системной камеры. -->
+    <cache-path name="camera_tmp" path="camera/" />
+</paths>

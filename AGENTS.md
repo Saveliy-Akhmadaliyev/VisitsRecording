@@ -49,6 +49,16 @@ Monorepo:
 - Конфиг MinIO: `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (дефолты: `http://localhost:9000` / `minioadmin` / `minioadmin` / `visits-media`). Bucket создаётся автоматически при первом presign.
 - TODO: аутентификация `POST /api/auth/login` + JWT — закрыть `/api/admin/*` ролью ADMIN, `/api/mobile/*` ролью INSPECTOR, `inspectorId` синка брать из токена.
 
+## Mobile (Android-приложение)
+
+- Стек: Kotlin + Jetpack Compose, Room, WorkManager, Ktor-клиент + kotlinx.serialization. Ручной DI (`App.container`), без Hilt — минимальность намеренная.
+- План — `идеи/roadmap_mobile.md` (этап 1 MVP), локальная схема — `идеи/entities_mobile.md`. Что готово/осталось — `mobile/README.md`.
+- Структура: `db/` — Room (5 таблиц: templates, template_fields, visits, visit_answers, media_files; статусы `SYNCED`/`PENDING_SYNC` и `NOT_UPLOADED`/`UPLOADED_TO_S3`); `net/` — DTO (зеркалят `backend/.../api/dto/MobileDtos.kt`, менять синхронно) + Ktor-клиент; `sync/` — SyncRepository (ядро push/pull) + SyncWorker + SyncPrefs; `ui/` — 3 экрана (список, детали, чек-лист), навигация без nav-библиотеки.
+- Логика синка: фото грузятся в MinIO ДО отправки отчёта; push — визиты PENDING_SYNC + ответы + s3Key; pull применяется с last-write-wins (локальные PENDING_SYNC не перезаписываются; IN_PROGRESS не сбрасывается админским переносом); CANCELLED с сервера = удалить визит локально (каскад + удаление файлов фото).
+- DEV-допущения (убрать при аутентификации): инспектор выбирается из `GET /api/admin/users` (InspectorPicker), `inspectorId` в теле sync; presigned-URL с localhost переписывается на 10.0.2.2 для эмулятора (`devRewrite` в `net/Api.kt`); `BASE_URL = http://10.0.2.2:8080`.
+- Отклонения от roadmap_mobile.md (зафиксировано): без Hilt (ручной DI), камера — системный интент вместо CameraX, геолокация — LocationManager вместо FusedLocationProviderClient. Остальное — TODO в `mobile/README.md`.
+- Сборка: `cd mobile && ./gradlew assembleDebug`. compileSdk 37 (SDK с машины разработчика), minSdk 26.
+
 ## Admin (веб-админка)
 
 - Стек: React 18 + TypeScript + Vite, без UI-кита и без роутера — минимальность намеренная.
