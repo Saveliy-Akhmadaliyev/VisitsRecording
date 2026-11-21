@@ -18,6 +18,14 @@ cd backend
 ./gradlew run             # API на http://localhost:8080/health
 ```
 
+## Быстрый старт (админка)
+
+```bash
+cd admin
+npm install
+npm run dev               # http://localhost:5173 (нужен запущенный бек)
+```
+
 Нужна Java 17+. Миграции БД применяются автоматически при старте.
 
 Тестовые пользователи (создаются миграцией V2):

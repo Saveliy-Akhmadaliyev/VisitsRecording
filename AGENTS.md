@@ -37,11 +37,25 @@ Monorepo:
 - Новые отклонения от первоисточников фиксировать в этом файле.
 - Конфиг — переменные окружения: `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, `PORT` (дефолты совпадают с docker-compose.yml).
 
+## Admin (веб-админка)
+
+- Стек: React 18 + TypeScript + Vite, без UI-кита и без роутера — минимальность намеренная.
+- Запуск: `cd admin && npm install && npm run dev` → http://localhost:5173 (Vite-прокси `/api` → `http://localhost:8080`, бек должен быть запущен).
+- Структура: `src/api.ts` — весь REST-клиент; `src/types.ts` — типы, зеркалят DTO бекенда (`backend/.../api/dto/Dtos.kt`), менять синхронно; `src/pages/` — вкладки; `src/ui.tsx` — общие компоненты.
+- Ошибки API приходят из бека в виде `{"error": "..."}` — клиент показывает их в `ErrorBox`.
+- TODO (можно делегировать по отдельности):
+  - аутентификация: форма логина + JWT в заголовок `Authorization` (когда на беке появится `/api/auth/login`)
+  - календарь визитов вместо таблицы (например, FullCalendar)
+  - presigned-фото в карточке визита (когда бек отдаст URL к MinIO)
+  - редактирование объектов и ФИО сотрудников (PUT/PATCH уже есть в API)
+  - пагинация/поиск в таблицах
+
 ## Команды
 
 - `docker compose up -d` — PostgreSQL (:5432) + MinIO (:9000 API, :9001 консоль), нужны для запуска бека
 - `cd backend && ./gradlew run` — запуск API на :8080 (проверка: `GET /health`)
 - `cd backend && ./gradlew build` — сборка + тесты; `./gradlew test` — только тесты
+- `cd admin && npm run dev` — админка на :5173 (нужен запущенный бек); `npm run build` — проверка типов + прод-сборка
 - Для `./gradlew` локально нужна Java 17+. Без Java: `docker run --rm --user $(id -u):$(id -g) -e GRADLE_USER_HOME=/tmp/gradle -v $PWD/backend:/work -w /work gradle:8.10.2-jdk17 gradle --no-daemon build`
 
 ## Зафиксированные решения
