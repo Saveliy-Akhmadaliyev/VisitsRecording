@@ -35,6 +35,9 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql:10.20.1")
     implementation("com.zaxxer:HikariCP:5.1.0")
 
+    // Медиа: direct upload из телефона в MinIO/S3 по presigned URL
+    implementation("io.minio:minio:8.5.12")
+
     // Прочее
     implementation("at.favre.lib:bcrypt:0.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

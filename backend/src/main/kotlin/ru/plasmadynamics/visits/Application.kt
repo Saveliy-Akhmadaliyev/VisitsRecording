@@ -15,17 +15,19 @@ import ru.plasmadynamics.visits.api.*
 import ru.plasmadynamics.visits.api.dto.ErrorResponse
 import ru.plasmadynamics.visits.config.AppConfig
 import ru.plasmadynamics.visits.db.DatabaseFactory
+import ru.plasmadynamics.visits.storage.MediaStorage
 
 fun main() {
     val config = AppConfig.fromEnv()
     DatabaseFactory.init(config.database)
+    val storage = MediaStorage(config.storage)
 
     embeddedServer(Netty, port = config.http.port, host = "0.0.0.0") {
-        module()
+        module(storage)
     }.start(wait = true)
 }
 
-fun Application.module() {
+fun Application.module(storage: MediaStorage? = null) {
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true
@@ -48,13 +50,19 @@ fun Application.module() {
     routing {
         get("/health") { call.respondText("OK") }
 
-        // TODO(аутентификация): закрыть /api/admin проверкой JWT и роли ADMIN.
+        // TODO(аутентификация): закрыть /api/admin проверкой JWT и роли ADMIN,
+        // /api/mobile — проверкой JWT и роли INSPECTOR.
         route("/api/admin") {
             usersRoutes()
             locationsRoutes()
             templatesRoutes()
             visitsRoutes()
             dashboardRoutes()
+        }
+
+        route("/api/mobile") {
+            if (storage != null) mediaRoutes(storage)
+            mobileRoutes()
         }
     }
 }

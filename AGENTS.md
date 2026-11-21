@@ -32,10 +32,22 @@ Monorepo:
   - `templates.origin_id` — все версии одного шаблона ссылаются на id первой версии (группировка в списке админки).
   - Статус `CANCELLED` вместо `OVERDUE`: «просрочен» вычисляется на лету (PLANNED + `scheduled_at < now`), в API возвращается как статус `OVERDUE`.
   - Сид-пользователи для разработки: `admin`/`admin123` (ADMIN), `inspector`/`inspector123` (INSPECTOR).
-- Аутентификации пока нет, `/api/admin/*` открыт; `admin_id` визита до появления JWT — первый активный ADMIN (TODO в коде).
+- Аутентификации пока нет, `/api/admin/*` и `/api/mobile/*` открыты; `admin_id` визита до появления JWT — первый активный ADMIN, `inspectorId` в синке приходит в теле запроса (TODO в коде).
 - `PUT /api/admin/templates/{id}` создаёт новую версию (новый UUID, version+1), старую архивирует — редактирования строк версий нет.
 - Новые отклонения от первоисточников фиксировать в этом файле.
 - Конфиг — переменные окружения: `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, `PORT` (дефолты совпадают с docker-compose.yml).
+
+## Mobile API (для мобильного приложения)
+
+- Контракт — `идеи/mobile_api.md`, реализация без аутентификации (см. TODO ниже).
+- `POST /api/mobile/media/presign` — presigned PUT-ссылки для прямой загрузки фото в MinIO (мимо бека). Ключ `visits/{visitId}/{fileId}{ext}`, ссылка живёт 30 минут. Тело: `{"files": [{"fileId", "visitId", "contentType"}]}`.
+- `POST /api/mobile/sync` — push + pull одним запросом:
+  - push: `{"inspectorId", "lastSyncedAt", "changes": {"visits", "answers", "mediaFiles"}}` — upsert по PK (id генерируются на телефоне, повторная отправка не создаёт дублей); если визит на сервере уже COMPLETED — входящий статус игнорируется (метаданные обновляются);
+  - pull: `{"serverTime", "updates": {"visits", "templates", "locations"}}` — визиты инспектора + шаблоны/объекты, на которые они ссылаются, плюс всё с `updatedAt > lastSyncedAt`; `lastSyncedAt = null` — первая синхронизация, сервер отдаёт всё. Телефон передаёт в следующий запрос `serverTime` из прошлого ответа (часам телефона доверять нельзя).
+- Отклонения от `идеи/mobile_api.md`: camelCase вместо snake_case; `is_deleted` нет — «мягкое удаление» = статус CANCELLED (телефон убирает визит сам); `locations` отдельным списком в ответе, а не вложены в визит (иначе телефон не узнает о правке объекта без визитов); `inspectorId` в теле запроса — временно, до JWT.
+- Код: `api/MobileRoutes.kt`, `api/MediaRoutes.kt`, `api/dto/MobileDtos.kt`, `storage/MediaStorage.kt`.
+- Конфиг MinIO: `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (дефолты: `http://localhost:9000` / `minioadmin` / `minioadmin` / `visits-media`). Bucket создаётся автоматически при первом presign.
+- TODO: аутентификация `POST /api/auth/login` + JWT — закрыть `/api/admin/*` ролью ADMIN, `/api/mobile/*` ролью INSPECTOR, `inspectorId` синка брать из токена.
 
 ## Admin (веб-админка)
 

@@ -177,16 +177,10 @@ fun Route.visitsRoutes() {
     }
 }
 
-private fun Instant.toOffsetDateTime(): OffsetDateTime = OffsetDateTime.ofInstant(this, ZoneOffset.UTC)
-
 private fun visitById(id: UUID): VisitOut = transaction { visitByIdRow(id) }
 
 private fun visitByIdRow(id: UUID): VisitOut =
     VisitsTable.selectAll().where { VisitsTable.id eq id }.single().toVisitOut()
-
-/** Эффективный статус: хранимый, либо вычисленный OVERDUE. */
-private fun effectiveStatus(status: VisitStatus, scheduledAt: OffsetDateTime): String =
-    if (status == VisitStatus.PLANNED && scheduledAt.toInstant() < Instant.now()) "OVERDUE" else status.name
 
 private fun ResultRow.toVisitOut() = VisitOut(
     id = this[VisitsTable.id],

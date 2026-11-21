@@ -2,8 +2,10 @@ package ru.plasmadynamics.visits.api
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import ru.plasmadynamics.visits.domain.VisitStatus
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
 import java.util.UUID
 
@@ -25,3 +27,13 @@ fun String.parseInstant(): Instant = try {
         throw ApiException(HttpStatusCode.BadRequest, "Некорректный формат времени: $this (ожидается ISO-8601)")
     }
 }
+
+/** Instant -> OffsetDateTime (UTC) для колонок timestampWithTimeZone в Exposed. */
+fun Instant.toOffsetDateTime(): OffsetDateTime = OffsetDateTime.ofInstant(this, ZoneOffset.UTC)
+
+/**
+ * Эффективный статус визита: хранимый, либо вычисленный OVERDUE
+ * (PLANNED + scheduled_at < now). OVERDUE нигде не хранится — см. AGENTS.md.
+ */
+fun effectiveStatus(status: VisitStatus, scheduledAt: OffsetDateTime): String =
+    if (status == VisitStatus.PLANNED && scheduledAt.toInstant() < Instant.now()) "OVERDUE" else status.name
