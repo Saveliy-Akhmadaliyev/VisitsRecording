@@ -56,7 +56,9 @@ class VisitsApi(private val baseUrl: String = BASE_URL) {
 
     /** Прямая загрузка файла в MinIO по presigned URL (мимо бекенда). */
     suspend fun upload(uploadUrl: String, file: File, contentType: String): Boolean {
+        val originalHost = io.ktor.http.Url(uploadUrl).hostWithPort
         val response: HttpResponse = client.put(devRewrite(uploadUrl)) {
+            header(HttpHeaders.Host, originalHost)
             header(HttpHeaders.ContentType, contentType)
             setBody(file.readBytes())
         }
