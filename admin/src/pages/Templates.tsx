@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import type { FieldType, Template, TemplateField } from '../types'
-import { Button, Card, Empty, ErrorBox, Select, TextInput } from '../ui'
+import { Button, Card, Empty, ErrorBox, Icon, PageHeader, Select, TextInput } from '../ui'
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'TEXT', label: 'Текст' },
@@ -41,40 +41,41 @@ export default function TemplatesPage() {
 
   return (
     <>
+      <PageHeader title="Шаблоны" subtitle="Чек-листы, по которым инспекторы проводят проверки">
+        <Button onClick={() => setEditing('new')}><Icon name="plus" />Создать шаблон</Button>
+      </PageHeader>
       <ErrorBox error={error} />
-      <Card title="Шаблоны проверок">
-        <div className="actions" style={{ marginBottom: 12 }}>
-          <Button onClick={() => setEditing('new')}>Создать шаблон</Button>
+      {templates.length === 0 ? (
+        <Card><Empty text="Шаблонов пока нет" icon="templates" /></Card>
+      ) : (
+        <div className="tpl-grid">
+          {templates.map((t) => (
+            <div className="tpl-card" key={t.id}>
+              <div className="tpl-top">
+                <h3>{t.name}</h3>
+                <span className="badge role plain">v{t.version}</span>
+              </div>
+              <div className="tpl-desc">{t.description || 'Без описания'}</div>
+              <div className="tpl-meta">
+                <span className="badge plain">{t.fields.length} пунктов</span>
+                {t.fields.some((f) => f.requirePhotoOnIssue) && <span className="badge plain">Фото при проблеме</span>}
+              </div>
+              <div className="actions">
+                <Button className="secondary small" onClick={() => setEditing(t)}>Редактировать</Button>
+                <Button
+                  className="danger small"
+                  onClick={async () => {
+                    setError(null)
+                    try { await api.archiveTemplate(t.id); load() } catch (e) { setError((e as Error).message) }
+                  }}
+                >
+                  Архивировать
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
-        {templates.length === 0 ? (
-          <Empty text="Шаблонов пока нет" />
-        ) : (
-          <table>
-            <thead><tr><th>Название</th><th>Версия</th><th>Пунктов</th><th></th></tr></thead>
-            <tbody>
-              {templates.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.name}</td>
-                  <td>v{t.version}</td>
-                  <td>{t.fields.length}</td>
-                  <td className="actions">
-                    <Button className="secondary small" onClick={() => setEditing(t)}>Редактировать</Button>
-                    <Button
-                      className="danger small"
-                      onClick={async () => {
-                        setError(null)
-                        try { await api.archiveTemplate(t.id); load() } catch (e) { setError((e as Error).message) }
-                      }}
-                    >
-                      Архивировать
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      )}
     </>
   )
 }
@@ -122,69 +123,86 @@ function TemplateEditor({
   }
 
   return (
-    <Card title={template ? `Редактирование: ${template.name} (v${template.version})` : 'Новый шаблон'}>
-      <form className="form" onSubmit={save}>
-        <label>Название
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} required placeholder="Еженедельный осмотр оборудования" />
-        </label>
-        <label>Инструкция для инспектора
-          <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
+    <>
+      <PageHeader
+        title={template ? `Редактирование: ${template.name}` : 'Новый шаблон'}
+        subtitle={template ? `Текущая версия v${template.version}. Сохранение создаст новую версию — старые визиты не изменятся.` : 'Опишите пункты, которые должен заполнить инспектор'}
+      >
+        <Button type="button" className="secondary" onClick={onCancel}><Icon name="back" />К списку</Button>
+      </PageHeader>
 
-        <h3 style={{ fontSize: 14 }}>Пункты проверки</h3>
-        {fields.map((f, i) => (
-          <div key={i} className="card" style={{ padding: 12 }}>
-            <div className="row">
-              <label>Текст пункта
-                <TextInput value={f.title} onChange={(e) => setField(i, { title: e.target.value })} required />
-              </label>
-              <label>Тип ответа
-                <Select value={f.fieldType} onChange={(e) => setField(i, { fieldType: e.target.value as FieldType })}>
-                  {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </Select>
-              </label>
-            </div>
-            {f.fieldType === 'SELECT' && (
-              <label>Варианты (через запятую)
-                <TextInput
-                  value={(f.options ?? []).join(', ')}
-                  onChange={(e) => setField(i, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                  placeholder="Исправно, Требует ремонта, Критично"
-                />
-              </label>
-            )}
-            <div className="row" style={{ alignItems: 'center' }}>
-              <label className="inline">
-                <input type="checkbox" checked={f.isRequired} onChange={(e) => setField(i, { isRequired: e.target.checked })} />
-                Обязательный
-              </label>
-              <label className="inline">
-                <input type="checkbox" checked={f.requirePhotoOnIssue} onChange={(e) => setField(i, { requirePhotoOnIssue: e.target.checked })} />
-                Требовать фото при проблеме
-              </label>
-              <Button
-                type="button"
-                className="danger small"
-                disabled={fields.length === 1}
-                onClick={() => setFields((prev) => prev.filter((_, idx) => idx !== i))}
-              >
-                Удалить пункт
+      <form className="form" onSubmit={save}>
+        <Card title="Основное">
+          <div className="form">
+            <label>Название
+              <TextInput value={name} onChange={(e) => setName(e.target.value)} required placeholder="Еженедельный осмотр оборудования" />
+            </label>
+            <label>Инструкция для инспектора
+              <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
+            </label>
+          </div>
+        </Card>
+
+        <Card title={`Пункты проверки (${fields.length})`}>
+          <div className="form">
+            {fields.map((f, i) => (
+              <div key={i} className="field-card">
+                <div className="field-num">{i + 1}</div>
+                <div className="field-body">
+                  <div className="form-grid">
+                    <label>Текст пункта
+                      <TextInput value={f.title} onChange={(e) => setField(i, { title: e.target.value })} required />
+                    </label>
+                    <label>Тип ответа
+                      <Select value={f.fieldType} onChange={(e) => setField(i, { fieldType: e.target.value as FieldType })}>
+                        {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </Select>
+                    </label>
+                  </div>
+                  {f.fieldType === 'SELECT' && (
+                    <label>Варианты (через запятую)
+                      <TextInput
+                        value={(f.options ?? []).join(', ')}
+                        onChange={(e) => setField(i, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                        placeholder="Исправно, Требует ремонта, Критично"
+                      />
+                    </label>
+                  )}
+                  <div className="field-foot">
+                    <label className="toggle">
+                      <input type="checkbox" checked={f.isRequired} onChange={(e) => setField(i, { isRequired: e.target.checked })} />
+                      Обязательный
+                    </label>
+                    <label className="toggle">
+                      <input type="checkbox" checked={f.requirePhotoOnIssue} onChange={(e) => setField(i, { requirePhotoOnIssue: e.target.checked })} />
+                      Фото при проблеме
+                    </label>
+                    <Button
+                      type="button"
+                      className="danger small"
+                      disabled={fields.length === 1}
+                      onClick={() => setFields((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="actions">
+              <Button type="button" className="secondary" onClick={() => setFields((prev) => [...prev, emptyField(prev.length + 1)])}>
+                <Icon name="plus" />Добавить пункт
               </Button>
             </div>
           </div>
-        ))}
-        <div className="actions">
-          <Button type="button" className="secondary" onClick={() => setFields((prev) => [...prev, emptyField(prev.length + 1)])}>
-            + Добавить пункт
-          </Button>
-        </div>
+        </Card>
 
         <ErrorBox error={error} />
         <div className="actions">
-          <Button type="submit">{template ? 'Сохранить (создаст новую версию)' : 'Создать'}</Button>
+          <Button type="submit">{template ? 'Сохранить как новую версию' : 'Создать шаблон'}</Button>
           <Button type="button" className="secondary" onClick={onCancel}>Отмена</Button>
         </div>
       </form>
-    </Card>
+    </>
   )
 }
